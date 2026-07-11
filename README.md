@@ -1,17 +1,3 @@
-<p align="center">
-  <img src="docs/banner.svg" alt="IncomeForge" width="100%">
-</p>
-
-<p align="center">
-  <a href="https://hub.docker.com/r/aigetfree/incomeforge"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/aigetfree/incomeforge?style=flat-square&logo=docker"></a>
-  <a href="https://github.com/aigetfree/IncomeForge/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/aigetfree/IncomeForge?style=flat-square&logo=github"></a>
-  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/github/license/aigetfree/IncomeForge?style=flat-square"></a>
-  <a href="https://github.com/aigetfree/IncomeForge/actions/workflows/test.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/aigetfree/IncomeForge/test.yml?style=flat-square&label=tests"></a>
-  <a href="https://codecov.io/gh/aigetfree/IncomeForge"><img alt="codecov" src="https://codecov.io/gh/aigetfree/IncomeForge/graph/badge.svg"></a>
-</p>
-
----
-
 ## What is IncomeForge?
 
 IncomeForge is a self-hosted platform that lets you deploy, manage, and monitor passive income services from a single web interface. Instead of manually setting up dozens of Docker containers, configuring credentials, and checking multiple dashboards, IncomeForge handles everything from one place.
