@@ -1,0 +1,61 @@
+# IncomeForge - Self-hosted passive income orchestrator
+# https://github.com/aigetfree/IncomeForge
+#
+# UI + Worker on the same server. For multi-server fleet, see docker-compose.fleet.yml
+#
+#   Start / update:  docker compose pull && docker compose up -d
+#
+# Images track the `latest` tag (pull_policy: always), so a plain `up -d`
+# always launches the newest published release — no rebuild needed. To pin a
+# specific version instead, replace `:latest` with e.g. `:0.6.13` (see
+# https://hub.docker.com/r/aigetfree/incomeforge/tags) and drop pull_policy.
+# Building from source? Use: docker compose -f docker-compose.build.yml up -d
+
+services:
+  incomeforge-ui:
+    image: aigetfree/incomeforge:latest
+    pull_policy: always
+    container_name: incomeforge-ui
+    ports:
+      - "8080:8080"
+    volumes:
+      - incomeforge_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_SECRET_KEY=${INCOMEFORGE_SECRET_KEY:-}
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY:-}
+      - INCOMEFORGE_ADMIN_API_KEY=${INCOMEFORGE_ADMIN_API_KEY:-}
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+  incomeforge-worker:
+    image: aigetfree/incomeforge-worker:latest
+    pull_policy: always
+    container_name: incomeforge-worker
+    expose:
+      - "8081"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - incomeforge_worker_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_UI_URL=http://incomeforge-ui:8080
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY:-}
+      - INCOMEFORGE_WORKER_NAME=local
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+volumes:
+  incomeforge_data:
+  incomeforge_worker_data:
+  incomeforge_fleet:

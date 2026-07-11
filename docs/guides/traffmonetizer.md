@@ -1,0 +1,58 @@
+# Traffmonetizer
+
+> **Category:** Bandwidth Sharing | **Status:** Active
+> **Website:** [https://traffmonetizer.com](https://traffmonetizer.com)
+
+## Description
+
+Traffmonetizer lets you monetize your internet traffic by sharing bandwidth with verified businesses. One of the few bandwidth-sharing services that works well on VPS and datacenter IPs in addition to residential connections. Uses a simple token-based authentication passed via command-line arguments. Supports ARM architectures for Raspberry Pi and similar devices.
+
+## Earning Estimates
+
+| Metric | Value |
+|--------|-------|
+| Monthly range | $0 - $4 (estimate) |
+| Per | device |
+| Minimum payout | $5 |
+| Payout frequency | On request |
+| Payment methods | Crypto, Paypal |
+
+> VPS and datacenter IPs earn less than residential. US/EU locations earn more. The more **unique public IPs** your devices have, the more you earn.
+
+> **Same IP = shared traffic.** Multiple devices on the same public IP are allowed (no ban risk), but traffic is split between them — you don't earn more total. Running on both a phone and server on the same WiFi is pointless. The phone only adds value on cellular data (different IP). Also available on iOS.
+
+## Requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Residential IP | No |
+| Minimum bandwidth | None |
+| GPU required | No |
+| Minimum storage | None |
+| Supported platforms | Docker, Windows, Macos, Android |
+
+## Setup Instructions
+
+### 1. Create an account
+
+Sign up at [Traffmonetizer](https://traffmonetizer.com/?aff=2064472).
+
+### 2. Get your credentials
+
+After signing up, locate the credentials needed for Docker deployment. These are typically your email/password or an API token found in the dashboard.
+
+### 3. Deploy with IncomeForge
+
+In the IncomeForge web UI, find **Traffmonetizer** in the service catalog and click **Deploy**. Enter the required credentials and IncomeForge will handle the rest.
+
+## Docker Configuration
+
+- **Image:** `traffmonetizer/cli_v2`
+- **Platforms:** linux/amd64, linux/arm64
+
+### Environment Variables
+
+| Variable | Label | Required | Secret | Description |
+|----------|-------|:--------:|:------:|-------------|
+| `TRAFFMONETIZER_TOKEN` | Token | Yes | Yes | Your Traffmonetizer account token (found in Dashboard > Docker run command) |
+| `TRAFFMONETIZER_DEVICE_NAME` | Device name | No | No | Name displayed in dashboard for device management (default: `incomeforge-{hostname}`) |

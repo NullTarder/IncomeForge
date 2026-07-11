@@ -1,0 +1,58 @@
+# SpeedShare
+
+> **Category:** Bandwidth Sharing | **Status:** Dead
+> **Website:** [https://speedshare.app](https://speedshare.app)
+
+> **Deprecated:** SpeedShare authentication is completely broken — login no longer works. The project was confirmed dead in their Discord (March 2026). Deployment is blocked. This guide is kept for reference only.
+
+## Description
+
+SpeedShare lets you earn by sharing your unused internet bandwidth. Residential IPs only - datacenter and VPS connections are not accepted. There is no official Docker image; the community image (mrcolorrain) provides container support with a referral code and UUID-based authentication.
+
+## Earning Estimates
+
+| Metric | Value |
+|--------|-------|
+| Monthly range | $0 - $3 (estimate) |
+| Per | device |
+| Minimum payout | $5 |
+| Payout frequency | On request |
+| Payment methods | Crypto, Paypal |
+
+> Residential IPs only. No official Docker image - uses community build. API at api.speedshare.app is broken (returns Telegraf metrics instead of JSON). Service appears non-functional as of March 2025.
+
+## Requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Residential IP | Yes |
+| Minimum bandwidth | None |
+| GPU required | No |
+| Minimum storage | None |
+| Supported platforms | Docker, Windows, Macos, Linux |
+
+## Setup Instructions
+
+### 1. Create an account
+
+Sign up at [SpeedShare](https://speedshare.app).
+
+### 2. Get your credentials
+
+After signing up, locate the credentials needed for Docker deployment. These are typically your email/password or an API token found in the dashboard.
+
+### 3. Deploy with IncomeForge
+
+In the IncomeForge web UI, find **SpeedShare** in the service catalog and click **Deploy**. Enter the required credentials and IncomeForge will handle the rest.
+
+## Docker Configuration
+
+- **Image:** `mrcolorrain/speedshare`
+- **Platforms:** linux/amd64
+
+### Environment Variables
+
+| Variable | Label | Required | Secret | Description |
+|----------|-------|:--------:|:------:|-------------|
+| `CODE` | Authorization Code | Yes | Yes | Your SpeedShare authorization code from the dashboard |
+| `SPEEDSHARE_UUID` | Device UUID | No | No | Unique device identifier. Auto-generated if not provided. |

@@ -1,0 +1,82 @@
+[project]
+name = "incomeforge"
+version = "0.1.0"
+description = "Self-hosted passive income orchestrator"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Sergio Fernandez", email = "9169332+aigetfree@users.noreply.github.com"}
+]
+keywords = ["passive-income", "docker", "bandwidth", "depin", "orchestrator"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "fastapi>=0.136.1",
+    "uvicorn>=0.47.0",
+    "uvloop>=0.22.1",
+    "httptools>=0.6",
+    "jinja2>=3.1.6",
+    "pyyaml>=6.0.3",
+    "aiosqlite>=0.22.1",
+    "httpx>=0.28.1",
+    "apscheduler>=3.11.2",
+    "python-multipart>=0.0.31",
+    "cryptography>=48.0.1",
+    "bcrypt>=5.0.0",
+    "itsdangerous>=2.2",
+    "prometheus_client>=0.22.0",
+    "docker>=7.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/aigetfree/IncomeForge"
+Repository = "https://github.com/aigetfree/IncomeForge"
+Issues = "https://github.com/aigetfree/IncomeForge/issues"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults (FastAPI Depends pattern)
+    "B904",   # raise-without-from-inside-except (FastAPI HTTPException pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["F841", "B007"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

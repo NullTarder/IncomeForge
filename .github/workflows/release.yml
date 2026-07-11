@@ -1,0 +1,153 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.worker'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'app/**'
+      - 'services/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci:
+    name: Verify CI passes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: pip install uv --quiet
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Test
+        run: uv run pytest
+
+  release:
+    needs: ci
+    name: Bump version and release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    outputs:
+      new_tag: ${{ steps.version.outputs.new_tag }}
+      build_ui: ${{ steps.changes.outputs.ui }}
+      build_worker: ${{ steps.changes.outputs.worker }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect what changed
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files: $CHANGED"
+
+          BUILD_UI=false
+          BUILD_WORKER=false
+
+          if echo "$CHANGED" | grep -qE '^(Dockerfile|pyproject\.toml|uv\.lock|app/(main|database|catalog|auth|compose_generator|exchange_rates|constants|collectors|templates|static))'; then
+            BUILD_UI=true
+          fi
+          if echo "$CHANGED" | grep -qE '^services/'; then
+            BUILD_UI=true
+            BUILD_WORKER=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(Dockerfile\.worker|pyproject\.toml|uv\.lock|app/(worker_api|orchestrator|constants|catalog|fleet_key)\.py)'; then
+            BUILD_WORKER=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^app/__init__\.py'; then
+            BUILD_UI=true
+            BUILD_WORKER=true
+          fi
+
+          # Shared constants affect both
+          if echo "$CHANGED" | grep -qE '^app/constants\.py'; then
+            BUILD_UI=true
+            BUILD_WORKER=true
+          fi
+
+          echo "ui=$BUILD_UI" >> "$GITHUB_OUTPUT"
+          echo "worker=$BUILD_WORKER" >> "$GITHUB_OUTPUT"
+          echo "Build UI: $BUILD_UI, Build Worker: $BUILD_WORKER"
+
+      - name: Get latest version tag
+        id: version
+        if: steps.changes.outputs.ui == 'true' || steps.changes.outputs.worker == 'true'
+        run: |
+          LATEST=$(git tag -l 'v*.*.*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+          VERSION="${LATEST#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          # Choose the bump from conventional-commit markers in the commits since
+          # the last tag: a "BREAKING CHANGE" footer or a "type!:" subject -> major;
+          # a "feat:" -> minor; otherwise patch. Still fully automated — no manual tags.
+          if [ "$LATEST" = "v0.0.0" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LATEST}..HEAD"
+          fi
+          LOG=$(git log --format='%s%n%b' "$RANGE")
+          if echo "$LOG" | grep -qE '^BREAKING CHANGE:|^[a-z]+(\([^)]*\))?!:'; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+            LEVEL="major"
+          elif echo "$LOG" | grep -qE '^feat(\([^)]*\))?:'; then
+            MINOR=$((MINOR + 1)); PATCH=0
+            LEVEL="minor"
+          else
+            PATCH=$((PATCH + 1))
+            LEVEL="patch"
+          fi
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "Bumping $LATEST -> $NEW_TAG ($LEVEL)"
+
+      - name: Create and push tag
+        if: steps.version.outputs.new_tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.new_tag }}" -m "Release ${{ steps.version.outputs.new_tag }}"
+          git push origin "${{ steps.version.outputs.new_tag }}"
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.new_tag
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.new_tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: release
+    if: needs.release.outputs.new_tag
+    uses: ./.github/workflows/build.yml
+    with:
+      build_ui: ${{ needs.release.outputs.build_ui == 'true' }}
+      build_worker: ${{ needs.release.outputs.build_worker == 'true' }}
+      version: ${{ needs.release.outputs.new_tag }}
+    secrets: inherit

@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Fleet - IncomeForge{% endblock %}
+{% block page %}fleet{% endblock %}
+{% block topbar_title %}Fleet Management{% endblock %}
+
+{% block content %}
+<!-- Fleet Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Workers</div>
+    <div class="stat-value highlight" id="fleet-total-workers">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Online</div>
+    <div class="stat-value" id="fleet-online-workers">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Services</div>
+    <div class="stat-value" id="fleet-total-containers">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Running</div>
+    <div class="stat-value" id="fleet-running-containers">-</div>
+  </div>
+</div>
+
+<!-- Add Worker Info -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <span class="card-title">Add Worker</span>
+  </div>
+  <div style="padding: 0 20px 20px;">
+    <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.9rem;">
+      Deploy <code>aigetfree/incomeforge-worker</code> on each server, or install the
+      <a href="https://github.com/aigetfree/IncomeForge-android" style="color: var(--accent);">Android app</a> on your phone.
+      For Docker workers, set these environment variables:
+    </p>
+    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+      <code id="worker-env" style="display: block; word-break: break-all; color: var(--text-primary); font-size: 0.85rem; white-space: pre-wrap;">INCOMEFORGE_UI_URL=<span id="env-ui-url"></span>
+INCOMEFORGE_API_KEY=<span id="env-api-key">••••••••</span>
+INCOMEFORGE_WORKER_NAME=server-name</code>
+      <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+        <span id="api-key-status" class="badge badge-category" style="font-size:0.72rem;">Checking…</span>
+        {% if user.r == 'owner' %}
+        <button class="btn btn-ghost btn-sm" onclick="toggleApiKey()" id="reveal-btn">Reveal API Key</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyWorkerEnv()">Copy</button>
+        {% endif %}
+      </div>
+    </div>
+    <p style="color: var(--text-muted); margin-top: 8px; font-size: 0.82rem;">
+      The API key is set via <code>INCOMEFORGE_API_KEY</code> env var on the UI container. Use the same key on all workers.
+    </p>
+  </div>
+</div>
+
+<!-- Worker List -->
+<div class="section-header">
+  <h2 class="section-title">Workers</h2>
+</div>
+
+<div id="fleet-workers">
+  <div class="empty-state">
+    <div class="empty-state-title">Loading fleet...</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  let fleetTimer = null;
+  let _apiKeyRevealed = false;
+  let _apiKey = '';
+  let _apiKeySet = false;
+  const _isOwner = {{ 'true' if user.r == 'owner' else 'false' }};
+
+  document.getElementById('env-ui-url').textContent = window.location.origin;
+
+  // Fetch only the API-key STATUS on load (no secret value). The plaintext key is
+  // fetched lazily via the owner-only reveal endpoint, on explicit user action.
+  async function loadApiKeyStatus() {
+    const statusEl = document.getElementById('api-key-status');
+    try {
+      const data = await CP.api('/api/fleet/api-key');
+      _apiKeySet = !!data.is_set;
+      if (statusEl) {
+        if (_apiKeySet) {
+          statusEl.textContent = 'Configured';
+          statusEl.className = 'badge badge-deployed';
+          statusEl.style.fontSize = '0.72rem';
+        } else {
+          statusEl.textContent = 'Not set';
+          statusEl.className = 'badge badge-category';
+          statusEl.style.fontSize = '0.72rem';
+        }
+      }
+    } catch {
+      if (statusEl) { statusEl.textContent = 'Unknown'; statusEl.style.fontSize = '0.72rem'; }
+    }
+  }
+
+  // Lazily fetch the plaintext key (owner-only POST). Returns the key string.
+  async function fetchApiKey() {
+    if (_apiKey) return _apiKey;
+    try {
+      const data = await CP.api('/api/fleet/api-key/reveal', { method: 'POST' });
+      _apiKey = data.api_key || '(not configured)';
+    } catch (err) {
+      _apiKey = '(error)';
+      CP.toast('Could not reveal API key: ' + (err.message || 'error'), 'error');
+    }
+    return _apiKey;
+  }
+
+  async function loadFleet() {
+    try {
+      const [summary, workers] = await Promise.all([
+        CP.api('/api/fleet/summary'),
+        CP.api('/api/workers'),
+      ]);
+
+      document.getElementById('fleet-total-workers').textContent = summary.total_workers || 0;
+      document.getElementById('fleet-online-workers').textContent = summary.online_workers || 0;
+      document.getElementById('fleet-total-containers').textContent = summary.total_containers || 0;
+      document.getElementById('fleet-running-containers').textContent = summary.running_containers || 0;
+
+      renderWorkers(workers);
+    } catch (err) {
+      const msg = (err.message || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+      document.getElementById('fleet-workers').innerHTML =
+        `<div class="empty-state"><div class="empty-state-text">Failed to load fleet data: ${msg}</div></div>`;
+    }
+  }
+
+  function renderWorkers(workers) {
+    const container = document.getElementById('fleet-workers');
+    if (!container) return;
+
+    let html = '';
+
+    if (workers.length === 0) {
+      html = `<div class="empty-state" style="padding: 40px 20px;">
+        <div class="empty-state-title">No workers registered</div>
+        <div class="empty-state-text">Deploy a IncomeForge Worker on your servers to see them here.</div>
+      </div>`;
+    } else {
+      for (const w of workers) {
+        const isOnline = w.status === 'online';
+        const statusClass = isOnline ? 'running' : 'stopped';
+        const borderColor = isOnline ? 'var(--success)' : 'var(--text-muted)';
+        const sysInfo = w.system_info || {};
+        const isAndroid = (sysInfo.device_type === 'android');
+        const items = isAndroid ? (w.apps || []) : (w.containers || []);
+        html += `
+        <div class="card" style="margin-bottom: 12px; border-left: 3px solid ${borderColor};">
+          <div style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-dot ${statusClass}"></span>
+                <span style="font-weight: 600; color: var(--text-primary);">${esc(w.name)}</span>
+                ${isAndroid ? '<span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:var(--bg-hover); color:var(--text-muted);">Android</span>' : ''}
+              </div>
+              ${_isOwner ? `<button class="btn btn-danger btn-sm btn-remove-worker" data-worker-id="${w.id}" data-worker-name="${esc(w.name)}" title="Remove worker">Remove</button>` : ''}
+            </div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-muted);">
+              <span>${esc(w.url || '-')}</span>
+              <span>${esc(sysInfo.os || '-')}${sysInfo.os_version ? ' ' + esc(sysInfo.os_version) : ''}</span>
+              <span>${esc(sysInfo.arch || '-')}</span>
+              <span>Last seen: ${w.last_heartbeat || 'never'}</span>
+            </div>
+            ${isAndroid && items.length > 0 ? renderApps(items) : ''}
+            ${!isAndroid && items.length > 0 ? renderContainers(w) : ''}
+          </div>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  function fmtBytes(b) {
+    if (!b || b < 1024) return (b || 0) + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function renderApps(apps) {
+    let html = '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">';
+    html += '<div style="display: flex; gap: 6px; flex-wrap: wrap;">';
+    for (const a of apps) {
+      const isRunning = a.running;
+      const color = isRunning ? 'var(--success)' : 'var(--text-muted)';
+      const bg = isRunning ? 'var(--success-soft)' : 'var(--bg-hover)';
+      const tx = a.net_tx_24h || 0;
+      const rx = a.net_rx_24h || 0;
+      const netTip = (tx || rx) ? ` title="24h: ↑${fmtBytes(tx)} ↓${fmtBytes(rx)}"` : '';
+      html += `<span style="font-size:0.75rem; padding:3px 8px; border-radius:4px; background:${bg}; color:${color}; font-weight:500;"${netTip}>${esc(a.slug)}</span>`;
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderContainers(worker) {
+    let html = '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">';
+    html += '<div style="display: flex; gap: 6px; flex-wrap: wrap;">';
+    for (const c of worker.containers) {
+      const status = (c.status || 'stopped').toLowerCase();
+      const isRunning = status === 'running';
+      const color = isRunning ? 'var(--success)' : 'var(--text-muted)';
+      const bg = isRunning ? 'var(--success-soft)' : 'var(--bg-hover)';
+      html += `<span style="font-size:0.75rem; padding:3px 8px; border-radius:4px; background:${bg}; color:${color}; font-weight:500;">${esc(c.slug || c.name)}</span>`;
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  window.toggleApiKey = async function() {
+    const el = document.getElementById('env-api-key');
+    const btn = document.getElementById('reveal-btn');
+    if (_apiKeyRevealed) {
+      el.textContent = '••••••••';
+      btn.textContent = 'Reveal API Key';
+      _apiKeyRevealed = false;
+    } else {
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = 'Revealing…';
+      await fetchApiKey();
+      btn.disabled = false;
+      el.textContent = _apiKey;
+      btn.textContent = 'Hide API Key';
+      _apiKeyRevealed = true;
+    }
+  };
+
+  async function removeWorker(workerId, name) {
+    if (!confirm(`Remove worker "${name}"? This will unregister it from the fleet.`)) return;
+    try {
+      await CP.api(`/api/workers/${workerId}`, { method: 'DELETE' });
+      CP.toast(`Worker "${name}" removed`, 'success');
+      loadFleet();
+    } catch (err) {
+      CP.toast('Failed: ' + err.message, 'error');
+    }
+  }
+
+  document.getElementById('fleet-workers').addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-remove-worker');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.workerId, 10);
+    if (isNaN(id)) return;
+    const name = btn.dataset.workerName;
+    removeWorker(id, name);
+  });
+
+  window.copyWorkerEnv = async function() {
+    // Lazily fetch the plaintext key (owner-only reveal endpoint) before copying.
+    await fetchApiKey();
+    const uiUrl = document.getElementById('env-ui-url').textContent;
+    const text = `INCOMEFORGE_UI_URL=${uiUrl}\nINCOMEFORGE_API_KEY=${_apiKey}\nINCOMEFORGE_WORKER_NAME=server-name`;
+    navigator.clipboard.writeText(text).then(() => CP.toast('Copied', 'success'));
+  };
+
+  loadApiKeyStatus();
+  loadFleet();
+  fleetTimer = setInterval(loadFleet, 60000);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+# IncomeForge - build from source (for contributors / local development)
+# https://github.com/aigetfree/IncomeForge
+#
+# This file builds the UI and worker images from the local checkout instead of
+# pulling the published releases. Use it when developing changes:
+#
+#   docker compose -f docker-compose.build.yml up -d --build
+#
+# Regular users should use the default docker-compose.yml, which pulls the
+# published `latest` image (no build toolchain required).
+
+services:
+  incomeforge-ui:
+    build: .
+    image: aigetfree/incomeforge:dev
+    container_name: incomeforge-ui
+    ports:
+      - "8080:8080"
+    volumes:
+      - incomeforge_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_SECRET_KEY=${INCOMEFORGE_SECRET_KEY:-}
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY:-}
+      - INCOMEFORGE_ADMIN_API_KEY=${INCOMEFORGE_ADMIN_API_KEY:-}
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+  incomeforge-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: aigetfree/incomeforge-worker:dev
+    container_name: incomeforge-worker
+    expose:
+      - "8081"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - incomeforge_worker_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_UI_URL=http://incomeforge-ui:8080
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY:-}
+      - INCOMEFORGE_WORKER_NAME=local
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+volumes:
+  incomeforge_data:
+  incomeforge_worker_data:
+  incomeforge_fleet:

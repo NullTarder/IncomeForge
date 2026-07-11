@@ -1,0 +1,58 @@
+# IPRoyal Pawns
+
+> **Category:** Bandwidth Sharing | **Status:** Active
+> **Website:** [https://pawns.app](https://pawns.app)
+
+## Description
+
+IPRoyal Pawns lets you earn by sharing your unused bandwidth. IPRoyal is a well-established proxy provider, and Pawns is their residential bandwidth-sharing arm. The CLI Docker image accepts credentials via command-line flags. Offers a generous 10% lifetime referral commission and $3 bonus for new signups with code EARN3.
+
+## Earning Estimates
+
+| Metric | Value |
+|--------|-------|
+| Monthly range | $0 - $5 (estimate) |
+| Per | device |
+| Minimum payout | $5 |
+| Payout frequency | On request |
+| Payment methods | Paypal, Crypto, Bank |
+
+> Earnings depend on location and bandwidth usage. US/EU residential IPs earn more.
+
+## Requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Residential IP | Yes |
+| Minimum bandwidth | None |
+| GPU required | No |
+| Minimum storage | None |
+| Supported platforms | Docker, Windows, Macos, Linux, Android, Ios |
+
+## Setup Instructions
+
+### 1. Create an account
+
+Sign up at [IPRoyal Pawns](https://discoverpawns.eu/MAN1C).
+
+### 2. Get your credentials
+
+After signing up, locate the credentials needed for Docker deployment. These are typically your email/password or an API token found in the dashboard.
+
+### 3. Deploy with IncomeForge
+
+In the IncomeForge web UI, find **IPRoyal Pawns** in the service catalog and click **Deploy**. Enter the required credentials and IncomeForge will handle the rest.
+
+## Docker Configuration
+
+- **Image:** `iproyal/pawns-cli`
+- **Platforms:** linux/amd64, linux/arm64
+
+### Environment Variables
+
+| Variable | Label | Required | Secret | Description |
+|----------|-------|:--------:|:------:|-------------|
+| `IPROYALPAWNS_EMAIL` | Email | Yes | No | Your IPRoyal Pawns account email (passed as -email flag) |
+| `IPROYALPAWNS_PASSWORD` | Password | Yes | Yes | Your IPRoyal Pawns account password (passed as -password flag) |
+| `IPROYALPAWNS_DEVICE_NAME` | Device name | No | No | Name shown in your Pawns dashboard (passed as -device-name flag) (default: `incomeforge-{hostname}`) |
+| `IPROYALPAWNS_DEVICE_ID` | Device ID | No | No | Unique device identifier (passed as -device-id flag) (default: `incomeforge-{hostname}`) |

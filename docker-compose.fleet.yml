@@ -1,0 +1,87 @@
+# IncomeForge Fleet - Multi-server deployment example
+# https://github.com/aigetfree/IncomeForge
+#
+# Deploy the UI + a local worker on your main server.
+# Then deploy workers on each additional server using their own docker-compose.
+#
+# UI: Full dashboard + earnings collection (no Docker socket needed)
+# Workers: Agents with Docker socket that manage containers and report to UI
+
+# === Deploy on main server (e.g., server-a) ===
+services:
+  incomeforge-ui:
+    image: aigetfree/incomeforge:latest
+    pull_policy: always
+    container_name: incomeforge-ui
+    ports:
+      - "8080:8080"
+    volumes:
+      - incomeforge_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_SECRET_KEY=${INCOMEFORGE_SECRET_KEY}
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY}
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+  incomeforge-worker:
+    image: aigetfree/incomeforge-worker:latest
+    pull_policy: always
+    container_name: incomeforge-worker
+    ports:
+      - "8081:8081"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - incomeforge_worker_data:/data
+      - incomeforge_fleet:/fleet
+    environment:
+      - TZ=${TZ:-UTC}
+      - INCOMEFORGE_UI_URL=http://incomeforge-ui:8080
+      - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY}
+      - INCOMEFORGE_WORKER_NAME=server-a
+      # INCOMEFORGE_WORKER_URL: override auto-detected URL if the UI can't reach the default
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64M
+
+# === Deploy on each remote server (e.g., server-b, server-c) ===
+# Copy this to a separate docker-compose.yml on each worker server:
+#
+#  services:
+#    incomeforge-worker:
+#      image: aigetfree/incomeforge-worker:latest
+#      pull_policy: always
+#      container_name: incomeforge-worker
+#      ports:
+#        - "8081:8081"
+#      volumes:
+#        - /var/run/docker.sock:/var/run/docker.sock
+#        - incomeforge_worker_data:/data
+#      environment:
+#        - TZ=${TZ:-UTC}
+#        - INCOMEFORGE_UI_URL=http://server-a:8080
+#        - INCOMEFORGE_API_KEY=${INCOMEFORGE_API_KEY}
+#        - INCOMEFORGE_WORKER_NAME=server-b
+#        - INCOMEFORGE_WORKER_URL=http://server-b:8081  # URL the UI uses to reach this worker
+#      init: true
+#      restart: unless-stopped
+#      security_opt:
+#        - no-new-privileges:true
+#      tmpfs:
+#        - /tmp:size=64M
+#
+#  volumes:
+#    incomeforge_worker_data:
+
+volumes:
+  incomeforge_data:
+  incomeforge_worker_data:
+  incomeforge_fleet:

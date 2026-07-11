@@ -1,0 +1,52 @@
+# Bytelixir
+
+> **Category:** Bandwidth Sharing | **Status:** Active
+> **Website:** [https://bytelixir.com](https://bytelixir.com)
+
+## Description
+
+Bytelixir lets you earn passive income by sharing unused internet bandwidth. Supports Windows, macOS, Linux, and Android. Earnings range $2-50/month depending on location. Web dashboard at dash.bytelixir.com for tracking. No Docker image available.
+
+## Earning Estimates
+
+| Metric | Value |
+|--------|-------|
+| Monthly range | $0 - $3 (estimate) |
+| Per | device |
+| Minimum payout | $5 |
+| Payout frequency | On request |
+| Payment methods | Crypto |
+
+> Earnings vary by location ($2-50/month). No Docker image. Desktop app or Android app required.
+
+## Requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Residential IP | Yes |
+| Minimum bandwidth | None |
+| GPU required | No |
+| Minimum storage | None |
+| Supported platforms | Windows, Macos, Linux, Android |
+
+## Setup Instructions
+
+### 1. Create an account
+
+Sign up at [Bytelixir](https://bytelixir.com/r/4FWJWYHAX0V2).
+
+### 2. Get your credentials
+
+After signing up, locate the credentials needed for Docker deployment. These are typically your email/password or an API token found in the dashboard.
+
+### 3. Deploy with IncomeForge
+
+In the IncomeForge web UI, find **Bytelixir** in the service catalog and click **Deploy**. Enter the required credentials and IncomeForge will handle the rest.
+
+## Docker Configuration
+
+- **Image:** ``
+
+### Environment Variables
+
+No environment variables required.
